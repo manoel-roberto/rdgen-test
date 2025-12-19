@@ -1,4 +1,14 @@
+# requirements.txt - Dependências Python para RDGen
+# Lista de pacotes necessários para executar a aplicação
+
+# Framework web principal para desenvolvimento da aplicação
 django
+
+# Biblioteca para fazer requisições HTTP (usada para API do GitHub)
 requests
+
+# Biblioteca para processamento de imagens (redimensionamento de ícones/logos)
 pillow
+
+# Servidor WSGI para deploy em produção
 gunicorn

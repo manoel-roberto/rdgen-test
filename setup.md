@@ -1,105 +1,97 @@
-## Host the rdgen server with docker
+## Hospedar o servidor rdgen com docker
 
-1. First you will need to fork this repo on github
-2. Next, setup a A Github fine-grained access token with permissions for your rdgen
-   repository:
-    * login to your github account  
-    * click on your profile picture at the top right, click Settings  
-    * at the bottom of the left panel, click Developer Settings  
-    * click Personal access tokens  
-    * click Fine-grained tokens  
-    * click Generate new token  
-    * give a token name, change expiration to whatever you want  
-    * under Repository access, select Only select repositories, then pick your
-      rdgen repo  
-    * give Read and Write access to actions and workflows  
-    * You might have to go to: https://github.com/USERNAME/rdgen/actions and hit green Enable Actions button so it works.
-3. Next, login to your Github account, go to your rdgen repo page (https://github.com/USERNAME/rdgen)
-   * Click on Settings
-   * In the left pane, click on Secrets and variables, then click Actions
-   * Now click New repository secret
-   * Set the Name to GENURL
-   * Set the Secret to https://rdgen.hostname.com (or whatever your server will be accessed from)
-4. Now download the docker-compose.yml file and fill in the environment variables:
-  * SECRET_KEY="your secret key" - generate a secret key by running: ```python3 -c 'import secrets; print(secrets.token_hex(100))'```
-  * GHUSER="your github username"  
-  * GHBEARER="your fine-grained access token"  
-  * PROTOCOL="https" *optional - defaults to "https", change to "http" if you need to
-  * REPONAME="rdgen" *optional - defaults to "rdgen", change this if you renamed the repo when you forked it
-5. Now just run ```docker compose up -d```
+1. Primeiro, você precisará fazer um fork deste repositório no GitHub
+2. Em seguida, configure um token de acesso refinado do GitHub com permissões para seu repositório rdgen:
+    * Faça login na sua conta do GitHub
+    * Clique na sua foto de perfil no canto superior direito, clique em Settings
+    * Na parte inferior do painel esquerdo, clique em Developer Settings
+    * Clique em Personal access tokens
+    * Clique em Fine-grained tokens
+    * Clique em Generate new token
+    * Dê um nome ao token, altere a expiração para o que quiser
+    * Em Repository access, selecione Only select repositories, então escolha seu repositório rdgen
+    * Dê acesso de Read e Write a actions e workflows
+    * Você pode precisar ir para: https://github.com/USERNAME/rdgen/actions e clicar no botão verde Enable Actions para que funcione.
+3. Agora, faça login na sua conta do GitHub, vá para a página do seu repositório rdgen (https://github.com/USERNAME/rdgen)
+   * Clique em Settings
+   * No painel esquerdo, clique em Secrets and variables, então clique em Actions
+   * Agora clique em New repository secret
+   * Defina o Name como GENURL
+   * Defina o Secret como https://rdgen.hostname.com (ou qualquer que seja o servidor acessado)
+4. Agora baixe o arquivo docker-compose.yml e preencha as variáveis de ambiente:
+  * SECRET_KEY="sua chave secreta" - gere uma chave secreta executando: ```python3 -c 'import secrets; print(secrets.token_hex(100))'```
+  * GHUSER="seu nome de usuário do github"
+  * GHBEARER="seu token de acesso refinado"
+  * PROTOCOL="https" *opcional - padrão é "https", mude para "http" se necessário
+  * REPONAME="rdgen" *opcional - padrão é "rdgen", mude se renomeou o repositório ao fazer fork
+5. Agora apenas execute ```docker compose up -d```
 
 
-## Host manually:
+## Hospedar manualmente:
 
-1. A Github account with a fork of this repo  
-2. A Github fine-grained access token with permissions for your rdgen
-   repository:
-    * login to your github account  
-    * click on your profile picture at the top right, click Settings  
-    * at the bottom of the left panel, click Developer Settings  
-    * click Personal access tokens  
-    * click Fine-grained tokens  
-    * click Generate new token  
-    * give a token name, change expiration to whatever you want  
-    * under Repository access, select Only select repositories, then pick your
-      rdgen repo  
-    * give Read and Write access to actions and workflows  
-    * You might have to go to: https://github.com/USERNAME/rdgen/actions and hit green Enable Actions button so it works.
-3. Setup environment variables/secrets:
-    * environment variables on the server running rdgen:  
-        * GHUSER="your github username"  
-        * GHBEARER="your fine-grained access token"  
-        * PROTOCOL="https" *optional - defaults to "https", change to "http" if you need to
-        * REPONAME="rdgen" *optional - defaults to "rdgen", change this if you renamed the repo when you forked it
-    * github secrets (setup on your github account for your rdgen repo):  
-        * GENURL="example.com:8000"  *this is the domain and port that you are
-          running rdgen on, needs to be accessible on the internet, depending
-          on how you have this setup the port may not be needed  
+1. Uma conta do GitHub com um fork deste repositório
+2. Um token de acesso refinado do GitHub com permissões para seu repositório rdgen:
+    * Faça login na sua conta do GitHub
+    * Clique na sua foto de perfil no canto superior direito, clique em Settings
+    * Na parte inferior do painel esquerdo, clique em Developer Settings
+    * Clique em Personal access tokens
+    * Clique em Fine-grained tokens
+    * Clique em Generate new token
+    * Dê um nome ao token, altere a expiração para o que quiser
+    * Em Repository access, selecione Only select repositories, então escolha seu repositório rdgen
+    * Dê acesso de Read e Write a actions e workflows
+    * Você pode precisar ir para: https://github.com/USERNAME/rdgen/actions e clicar no botão verde Enable Actions para que funcione.
+3. Configure variáveis de ambiente/secrets:
+    * Variáveis de ambiente no servidor executando rdgen:
+        * GHUSER="seu nome de usuário do github"
+        * GHBEARER="seu token de acesso refinado"
+        * PROTOCOL="https" *opcional - padrão é "https", mude para "http" se necessário
+        * REPONAME="rdgen" *opcional - padrão é "rdgen", mude se renomeou o repositório ao fazer fork
+    * Secrets do GitHub (configure na sua conta do GitHub para seu repositório rdgen):
+        * GENURL="example.com:8000"  *este é o domínio e porta que você está executando rdgen, precisa ser acessível na internet, dependendo de como você configurou, a porta pode não ser necessária
 
 ```
-# Open to the directory you want to install rdgen (change /opt to wherever you want)  
+# Abra o diretório onde deseja instalar rdgen (mude /opt para onde quiser)
 cd /opt
 
-# Clone your rdgen repo, change bryangerlach to your github username
+# Clone seu repositório rdgen, mude bryangerlach para seu nome de usuário do github
 git clone https://github.com/bryangerlach/rdgen.git
 
-# Open the rdgen directory
+# Abra o diretório rdgen
 cd rdgen
 
-# Setup a python virtual environment called rdgen
+# Configure um ambiente virtual python chamado rdgen
 python -m venv .venv
 
-# Activate the python virtual environment 
+# Ative o ambiente virtual python
 source .venv/bin/activate
 
-# Install the python dependencies
+# Instale as dependências python
 pip install -r requirements.txt
 
-# Setup the database
+# Configure o banco de dados
 python manage.py migrate
 
-# Run the server, change 8000 with whatever you want
+# Execute o servidor, mude 8000 para o que quiser
 python manage.py runserver 0.0.0.0:8000
 ```
 
-open your web browser to yourdomain:8000
+abra seu navegador web para yourdomain:8000
 
-use nginx, caddy, traefik, etc. for ssl reverse proxy
+use nginx, caddy, traefik, etc. para proxy reverso ssl
 
-### To autostart the server on boot, you can set up a systemd service called rdgen.service
+### Para iniciar automaticamente o servidor na inicialização, você pode configurar um serviço systemd chamado rdgen.service
 
-replace user, group, and port if you need to  replace /opt with wherever you
-have installed rdgen  save the following file as
-/etc/systemd/system/rdgen.service, and make sure to change GHUSER, GHBEARER
+substitua user, group e port se necessário  substitua /opt por onde você instalou rdgen  salve o seguinte arquivo como /etc/systemd/system/rdgen.service, e certifique-se de alterar GHUSER, GHBEARER
 
 ```
 [Unit]
-Description=Rustdesk Client Generator
+Description=Gerador de Cliente Rustdesk
 [Service]
 Type=simple
 LimitNOFILE=1000000
-Environment="GHUSER=yourgithubusername"
-Environment="GHBEARER=yourgithubtoken"
+Environment="GHUSER=seuusuariogithub"
+Environment="GHBEARER=seutoken"
 PassEnvironment=GHUSER GHBEARER
 ExecStart=/opt/rdgen/.venv/bin/python3 /opt/rdgen/manage.py runserver 0.0.0.0:8000
 WorkingDirectory=/opt/rdgen/
@@ -108,20 +100,19 @@ Group=root
 Restart=always
 StandardOutput=file:/var/log/rdgen.log
 StandardError=file:/var/log/rdgen.error
-# Restart service after 10 seconds if node service crashes
+# Reiniciar serviço após 10 segundos se o serviço node travar
 RestartSec=10
 [Install]
 WantedBy=multi-user.target
 ```
 
-then run this to enable autostarting the service on boot, and then start it
-manually this time:
+então execute isso para habilitar a inicialização automática do serviço na inicialização, e então inicie manualmente desta vez:
 
 ```
 sudo systemctl enable rdgen.service
 sudo systemctl start rdgen.service
 ```
-and to get the status of the server, run:
+e para obter o status do servidor, execute:
 ```
 sudo systemctl status rdgen.service
 ```

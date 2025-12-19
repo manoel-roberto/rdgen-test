@@ -1,16 +1,29 @@
+# Docker Compose para RDGen - Orquestração de containers
+# Define serviços e configurações para deploy da aplicação
+
 services:
   rdgen:
-    # use bryangerlach/rdgen:latest for the latest build
+    # Imagem Docker da aplicação RDGen
+    # bryangerlach/rdgen:latest aponta para a versão mais recente
     image: bryangerlach/rdgen:latest
+    # Política de restart: reinicia sempre exceto quando parado manualmente
     restart: unless-stopped
+    # Variáveis de ambiente necessárias para o funcionamento
     environment:
+      # Chave secreta do Django (deve ser alterada em produção)
       SECRET_KEY: "django-insecure-!(t-!f#6g#sr%yfded9(xha)g+=!6craeez^cp+*&bz_7vdk61"
+      # Credenciais do GitHub para API (substituir pelos valores reais)
       GHUSER: "github_username"
       GHBEARER: "github_access_token"
+      # URL pública do servidor para callbacks dos workflows
       GENURL: "accessible_url_of_server"
+      # Protocolo usado (http/https)
       PROTOCOL: "https"
+      # Nome do repositório GitHub com os workflows
       REPONAME: "rdgen"
+    # Mapeamento de portas: host:container
     ports:
       - "8000:8000"
+    # Servidor DNS para resolução de nomes
     dns:
       - 8.8.8.8

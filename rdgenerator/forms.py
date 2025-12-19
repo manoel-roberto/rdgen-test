@@ -1,105 +1,139 @@
+# forms.py - Definição dos formulários da aplicação RDGen
+# Este arquivo contém os formulários Django usados para coletar configurações
+# de personalização dos clientes RustDesk dos usuários.
+
 from django import forms
 from PIL import Image
 
 class GenerateForm(forms.Form):
-    #Platform
-    platform = forms.ChoiceField(choices=[('windows','Windows'),('linux','Linux (currently unavailable)'),('android','Android'),('macos','macOS')], initial='windows')
+    # Formulário principal para geração de cliente RustDesk personalizado
+    # Contém campos para plataforma, versão, configurações de servidor, permissões, etc.
+    
+    # Campo para seleção da plataforma alvo
+    platform = forms.ChoiceField(choices=[('windows','Windows'),('linux','Linux (atualmente indisponível)'),('android','Android'),('macos','macOS')], initial='windows')
+    
+    # Campo para seleção da versão do RustDesk
     version = forms.ChoiceField(choices=[('master','nightly'),('1.4.2','1.4.2'),('1.4.1','1.4.1'),('1.4.0','1.4.0'),('1.3.9','1.3.9'),('1.3.8','1.3.8'),('1.3.7','1.3.7'),('1.3.6','1.3.6'),('1.3.5','1.3.5'),('1.3.4','1.3.4'),('1.3.3','1.3.3')], initial='1.4.2')
-    help_text="'master' is the development version (nightly build) with the latest features but may be less stable"
-    delayFix = forms.BooleanField(initial=True, required=False)
-
-    #General
-    exename = forms.CharField(label="Name for EXE file", required=True)
-    appname = forms.CharField(label="Custom App Name", required=False)
+    help_text="'master' é a versão de desenvolvimento (nightly build) com os recursos mais recentes, mas pode ser menos estável"
+    
+    # Campos para configurações gerais
+    delayFix = forms.BooleanField(initial=True, required=False)  # Correção de delay
+    cycleMonitor = forms.BooleanField(initial=False, required=False)  # Monitor de ciclo
+    xOffline = forms.BooleanField(initial=False, required=False)  # Modo offline
+    hidecm = forms.BooleanField(initial=False, required=False)  # Ocultar CM
+    removeNewVersionNotif = forms.BooleanField(initial=False, required=False)  # Remover notificação de nova versão
+    
+    # Campos para configurações gerais do cliente
+    exename = forms.CharField(label="Nome para arquivo EXE", required=True)  # Nome do executável
+    appname = forms.CharField(label="Nome personalizado do app", required=False)  # Nome do aplicativo
     direction = forms.ChoiceField(widget=forms.RadioSelect, choices=[
-        ('incoming', 'Incoming Only'),
-        ('outgoing', 'Outgoing Only'),
-        ('both', 'Bidirectional')
-    ], initial='both')
-    installation = forms.ChoiceField(label="Disable Installation", choices=[
-        ('installationY', 'No, enable installation'),
-        ('installationN', 'Yes, DISABLE installation')
-    ], initial='installationY')
-    settings = forms.ChoiceField(label="Disable Settings", choices=[
-        ('settingsY', 'No, enable settings'),
-        ('settingsN', 'Yes, DISABLE settings')
-    ], initial='settingsY')
-
-    #Custom Server
-    serverIP = forms.CharField(label="Host", required=False)
-    apiServer = forms.CharField(label="API Server", required=False)
-    key = forms.CharField(label="Key", required=False)
-    urlLink = forms.CharField(label="Custom URL for links", required=False)
-    downloadLink = forms.CharField(label="Custom URL for downloading new versions", required=False)
-    compname = forms.CharField(label="Company name",required=False)
-
-    #Visual
-    iconfile = forms.FileField(label="Custom App Icon (in .png format)", required=False, widget=forms.FileInput(attrs={'accept': 'image/png'}))
-    logofile = forms.FileField(label="Custom App Logo (in .png format)", required=False, widget=forms.FileInput(attrs={'accept': 'image/png'}))
-    iconbase64 = forms.CharField(required=False)
-    logobase64 = forms.CharField(required=False)
+        ('incoming', 'Apenas entrada'),
+        ('outgoing', 'Apenas saída'),
+        ('both', 'Bidirecional')
+    ], initial='both')  # Direção da conexão
+    installation = forms.ChoiceField(label="Desabilitar instalação", choices=[
+        ('installationY', 'Não, habilitar instalação'),
+        ('installationN', 'Sim, DESABILITAR instalação')
+    ], initial='installationY')  # Controle de instalação
+    settings = forms.ChoiceField(label="Desabilitar configurações", choices=[
+        ('settingsY', 'Não, habilitar configurações'),
+        ('settingsN', 'Sim, DESABILITAR configurações')
+    ], initial='settingsY')  # Controle de configurações
+    
+    # Campos para servidor personalizado
+    serverIP = forms.CharField(label="Host", required=False)  # Endereço do servidor
+    apiServer = forms.CharField(label="Servidor API", required=False)  # Servidor API
+    key = forms.CharField(label="Chave", required=False)  # Chave pública
+    urlLink = forms.CharField(label="Link personalizado para links", required=False)  # Link personalizado
+    downloadLink = forms.CharField(label="Link personalizado para download de novas versões", required=False)  # Link de download
+    compname = forms.CharField(label="Nome da empresa",required=False)  # Nome da empresa
+    
+    # Campos para personalização visual
+    iconfile = forms.FileField(label="Ícone personalizado do app (formato .png)", required=False, widget=forms.FileInput(attrs={'accept': 'image/png'}))  # Upload de ícone
+    logofile = forms.FileField(label="Logo personalizado do app (formato .png)", required=False, widget=forms.FileInput(attrs={'accept': 'image/png'}))  # Upload de logo
+    iconbase64 = forms.CharField(required=False)  # Ícone em base64 (alternativo)
+    logobase64 = forms.CharField(required=False)  # Logo em base64 (alternativo)
     theme = forms.ChoiceField(choices=[
-        ('light', 'Light'),
-        ('dark', 'Dark'),
-        ('system', 'Follow System')
-    ], initial='system')
-    themeDorO = forms.ChoiceField(choices=[('default', 'Default'),('override', 'Override')], initial='default')
-
-    #Security
-    passApproveMode = forms.ChoiceField(choices=[('password','Accept sessions via password'),('click','Accept sessions via click'),('password-click','Accepts sessions via both')],initial='password-click')
-    permanentPassword = forms.CharField(widget=forms.PasswordInput(), required=False)
-    runasadmin = forms.ChoiceField(choices=[('false','No'),('true','Yes')], initial='false')
-    denyLan = forms.BooleanField(initial=False, required=False)
-    enableDirectIP = forms.BooleanField(initial=False, required=False)
-    #ipWhitelist = forms.BooleanField(initial=False, required=False)
-    autoClose = forms.BooleanField(initial=False, required=False)
-
-    #Permissions
-    permissionsDorO = forms.ChoiceField(choices=[('default', 'Default'),('override', 'Override')], initial='default')
-    permissionsType = forms.ChoiceField(choices=[('custom', 'Custom'),('full', 'Full Access'),('view','Screen share')], initial='custom')
-    enableKeyboard =  forms.BooleanField(initial=True, required=False)
-    enableClipboard = forms.BooleanField(initial=True, required=False)
-    enableFileTransfer = forms.BooleanField(initial=True, required=False)
-    enableAudio = forms.BooleanField(initial=True, required=False)
-    enableTCP = forms.BooleanField(initial=True, required=False)
-    enableRemoteRestart = forms.BooleanField(initial=True, required=False)
-    enableRecording = forms.BooleanField(initial=True, required=False)
-    enableBlockingInput = forms.BooleanField(initial=True, required=False)
-    enableRemoteModi = forms.BooleanField(initial=False, required=False)
-
-    #Other
-    removeWallpaper = forms.BooleanField(initial=True, required=False)
-
-    defaultManual = forms.CharField(widget=forms.Textarea, required=False)
-    overrideManual = forms.CharField(widget=forms.Textarea, required=False)
-
-    #custom added features
-    cycleMonitor = forms.BooleanField(initial=False, required=False)
-    xOffline = forms.BooleanField(initial=False, required=False)
-    hidecm = forms.BooleanField(initial=False, required=False)
-    removeNewVersionNotif = forms.BooleanField(initial=False, required=False)
-
+        ('light', 'Claro'),
+        ('dark', 'Escuro'),
+        ('system', 'Seguir sistema')
+    ], initial='system')  # Tema do aplicativo
+    themeDorO = forms.ChoiceField(choices=[('default', 'Padrão'),('override', 'Substituir')], initial='default')  # Default ou Override para tema
+    
+    # Campos para configurações de segurança
+    passApproveMode = forms.ChoiceField(choices=[('password','Aceitar sessões via senha'),('click','Aceitar sessões via clique'),('password-click','Aceitar sessões via ambos')],initial='password-click')  # Modo de aprovação
+    permanentPassword = forms.CharField(widget=forms.PasswordInput(), required=False)  # Senha permanente
+    runasadmin = forms.ChoiceField(choices=[('false','Não'),('true','Sim')], initial='false')  # Executar como admin
+    denyLan = forms.BooleanField(initial=False, required=False)  # Negar LAN
+    enableDirectIP = forms.BooleanField(initial=False, required=False)  # Habilitar IP direto
+    autoClose = forms.BooleanField(initial=False, required=False)  # Fechar automaticamente
+    
+    # Campos para permissões
+    permissionsDorO = forms.ChoiceField(choices=[('default', 'Padrão'),('override', 'Substituir')], initial='default')  # Default ou Override para permissões
+    permissionsType = forms.ChoiceField(choices=[('custom', 'Personalizado'),('full', 'Acesso completo'),('view','Compartilhamento de tela')], initial='custom')  # Tipo de permissões
+    enableKeyboard =  forms.BooleanField(initial=True, required=False)  # Habilitar teclado
+    enableClipboard = forms.BooleanField(initial=True, required=False)  # Habilitar clipboard
+    enableFileTransfer = forms.BooleanField(initial=True, required=False)  # Habilitar transferência de arquivos
+    enableAudio = forms.BooleanField(initial=True, required=False)  # Habilitar áudio
+    enableTCP = forms.BooleanField(initial=True, required=False)  # Habilitar TCP
+    enableRemoteRestart = forms.BooleanField(initial=True, required=False)  # Habilitar reinício remoto
+    enableRecording = forms.BooleanField(initial=True, required=False)  # Habilitar gravação
+    enableBlockingInput = forms.BooleanField(initial=True, required=False)  # Habilitar bloqueio de entrada
+    enableRemoteModi = forms.BooleanField(initial=False, required=False)  # Habilitar modificação remota
+    
+    # Campos adicionais
+    removeWallpaper = forms.BooleanField(initial=True, required=False)  # Remover wallpaper
+    
+    # Campos para configurações manuais avançadas
+    defaultManual = forms.CharField(widget=forms.Textarea, required=False)  # Configurações padrão manuais
+    overrideManual = forms.CharField(widget=forms.Textarea, required=False)  # Configurações override manuais
+    
+    # Campos para recursos customizados adicionais
+    cycleMonitor = forms.BooleanField(initial=False, required=False)  # Monitor de ciclo (duplicado? verificar)
+    xOffline = forms.BooleanField(initial=False, required=False)  # Offline (duplicado? verificar)
+    hidecm = forms.BooleanField(initial=False, required=False)  # Ocultar CM (duplicado? verificar)
+    removeNewVersionNotif = forms.BooleanField(initial=False, required=False)  # Remover notificação (duplicado? verificar)
+    
     def clean_iconfile(self):
-        print("checking icon")
+        # Método de validação personalizado para o campo iconfile
+        # Executado automaticamente quando o formulário é validado
+        # Permite verificações adicionais além das validações padrão do Django
+        print("checando ícone")  # Log para debug (pode ser removido em produção)
+
+        # Obter o valor limpo do campo iconfile
         image = self.cleaned_data['iconfile']
+
+        # Só validar se uma imagem foi fornecida
         if image:
             try:
-                # Open the image using Pillow
+                # Abrir imagem usando Pillow (biblioteca Python para processamento de imagens)
+                # Pillow suporta diversos formatos: PNG, JPEG, GIF, etc.
                 img = Image.open(image)
 
-                # Check if the image is a PNG (optional, but good practice)
+                # Verificar se é PNG (opcional, mas boa prática para ícones)
+                # PNG é recomendado por suportar transparência e ser lossless
                 if img.format != 'PNG':
-                    raise forms.ValidationError("Only PNG images are allowed.")
+                    raise forms.ValidationError("Apenas imagens PNG são permitidas.")
 
-                # Get image dimensions
+                # Obter dimensões da imagem (largura, altura)
+                # img.size retorna uma tupla (width, height)
                 width, height = img.size
 
-                # Check for square dimensions
+                # Verificar dimensões quadradas (largura == altura)
+                # Ícones geralmente precisam ser quadrados para boa aparência
                 if width != height:
-                    raise forms.ValidationError("Custom App Icon dimensions must be square.")
-                
+                    raise forms.ValidationError("As dimensões do ícone personalizado do app devem ser quadradas.")
+
+                # Se todas as validações passaram, retornar a imagem
+                # Isso permite que o campo seja salvo normalmente
                 return image
-            except OSError:  # Handle cases where the uploaded file is not a valid image
-                raise forms.ValidationError("Invalid icon file.")
-            except Exception as e: # Catch any other image processing errors
-                raise forms.ValidationError(f"Error processing icon: {e}")
+
+            # Capturar erros específicos de imagem inválida
+            # OSError é levantado quando o arquivo não é uma imagem válida
+            except OSError:
+                raise forms.ValidationError("Arquivo de ícone inválido. Envie uma imagem PNG válida.")
+
+            # Capturar outros erros de processamento de imagem
+            # Pode incluir problemas de memória, formatos não suportados, etc.
+            except Exception as e:
+                raise forms.ValidationError(f"Erro ao processar ícone: {e}")

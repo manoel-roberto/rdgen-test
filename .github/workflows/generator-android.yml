@@ -1,48 +1,64 @@
+# Workflow do GitHub Actions para geração de cliente RustDesk Android
+# Este workflow é disparado via API REST e compila um cliente personalizado do RustDesk
+# para Android com configurações específicas do usuário
+
 name: Custom Android Client Generator
 run-name: Custom Android Client Generator
-on: 
+
+# Gatilho: execução manual via API (workflow_dispatch)
+# Recebe parâmetros via inputs que são enviados pelo servidor RDGen
+on:
   workflow_dispatch:
     inputs:
+      # Servidor de rendezvous para conexão P2P
       server:
         description: 'Rendezvous Server'
         required: true
         default: ''
         type: string
+      # Chave pública para autenticação
       key:
         description: 'Public Key'
         required: true
         default: ''
         type: string
+      # Servidor API para funcionalidades avançadas
       apiServer:
         description: 'API Server'
         required: true
         default: ''
         type: string
+      # Configurações customizadas em JSON codificado em base64
       custom:
         description: "Custom JSON"
         required: true
         default: ''
         type: string
+      # UUID único para identificar esta execução
       uuid:
         description: "uuid of request"
         required: true
         default: ''
         type: string
+      # Link para ícone customizado (opcional)
       iconlink:
         description: "icon link"
         required: false
         default: 'false'
         type: string
+      # Link para logo customizado (opcional)
       logolink:
         description: "logo link"
         required: false
         default: 'false'
         type: string
+      # Nome da aplicação customizada
       appname:
         description: "app name"
         required: true
         default: 'rustdesk'
         type: string
+      # Nome do arquivo final
       filename:
         description: "Filename"
         required: true
@@ -54,46 +70,62 @@ on:
         default: '{}'
         type: string
 
-
+# Variáveis de ambiente globais para o workflow
+# Definem versões específicas das ferramentas para garantir reprodutibilidade
 env:
-  SCITER_RUST_VERSION: "1.75" # https://github.com/rustdesk/rustdesk/discussions/7503, also 1.78 has ABI change which causes our sciter version not working, https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
-  RUST_VERSION: "1.75" # sciter failed on m1 with 1.78 because of https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
+  # Versão do Rust para Sciter (evita problemas de ABI)
+  SCITER_RUST_VERSION: "1.75"
+  # Versão principal do Rust
+  RUST_VERSION: "1.75"
+  # Versões de ferramentas para Android NDK, CMake, NASM, LLVM, Flutter
   CARGO_NDK_VERSION: "3.1.2"
   SCITER_ARMV7_CMAKE_VERSION: "3.29.7"
   SCITER_NASM_DEBVERSION: "2.14-1"
   LLVM_VERSION: "15.0.6"
   FLUTTER_VERSION: "3.24.5"
-  ANDROID_FLUTTER_VERSION: "3.24.5" 
-  # for arm64 linux because official Dart SDK does not work
+  ANDROID_FLUTTER_VERSION: "3.24.5"
   FLUTTER_ELINUX_VERSION: "3.16.9"
+  # Tag para upload de artefatos
   TAG_NAME: "${{ inputs.upload-tag }}"
+  # Configurações do VCPKG (gerenciador de pacotes C++)
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
-  # vcpkg version: 2024.07.12
   VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
   ARMV7_VCPKG_COMMIT_ID: "6f29f12e82a8293156836ad81cc9bf5af41fe836"
+  # Versão extraída dos inputs
   VERSION: "${{ fromJson(inputs.extras).version }}"
+  # Versão do Android NDK
   NDK_VERSION: "r27c"
-  #signing keys env variable checks
+  # Secrets para assinatura de código (Android e macOS)
   ANDROID_SIGNING_KEY: "${{ secrets.ANDROID_SIGNING_KEY }}"
   MACOS_P12_BASE64: "${{ secrets.MACOS_P12_BASE64 }}"
+  # Flag para upload de artefatos
   UPLOAD_ARTIFACT: 'true'
+  # URL base para serviço de assinatura
   SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}"
+  # URL para atualizar status no servidor RDGen
   STATUS_URL: "${{ secrets.GENURL }}/updategh"
 
+# Definição dos jobs (tarefas) do workflow
 jobs:
+  # Job para gerar ponte Flutter-Rust para Linux
+  # Necessário para interoperabilidade entre Dart e Rust no Android
   generate-bridge-linux:
     uses: ./.github/workflows/bridge.yml
     with:
       version: ${{ fromJson(inputs.extras).version }}
 
+  # Job principal: construir cliente RustDesk para Android
+  # Executa em paralelo para diferentes arquiteturas Android usando matrix strategy
   build-rustdesk-android:
-    needs: [generate-bridge-linux]
+    needs: [generate-bridge-linux]  # Depende da ponte Flutter-Rust
     name: build rustdesk android apk ${{ matrix.job.target }}
     runs-on: ${{ matrix.job.os }}
     strategy:
-      fail-fast: false
+      fail-fast: false  # Continua executando outros jobs mesmo se um falhar
       matrix:
         job:
+          # Configurações de build para diferentes arquiteturas Android
+          # aarch64: ARM 64-bit (dispositivos modernos)
           - {
               arch: aarch64,
               target: aarch64-linux-android,
@@ -101,6 +133,7 @@ jobs:
               reltype: release,
               suffix: "",
             }
+          # armv7: ARM 32-bit (dispositivos mais antigos)
           - {
               arch: armv7,
               target: armv7-linux-androideabi,
@@ -108,6 +141,7 @@ jobs:
               reltype: release,
               suffix: "",
             }
+          # x86_64: Intel/AMD 64-bit (emuladores e alguns dispositivos)
           - {
               arch: x86_64,
               target: x86_64-linux-android,
@@ -116,17 +150,20 @@ jobs:
               suffix: "",
             }
     steps:
+      # Primeiro step: liberar espaço em disco
+      # Remove caches desnecessários para ter espaço para build Android
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
         with:
-          tool-cache: false
-          android: false
-          dotnet: true
-          haskell: true
-          large-packages: false
-          docker-images: true
-          swap-storage: false
+          tool-cache: false  # Não remove tool cache
+          android: false     # Não remove Android SDK (precisamos dele)
+          dotnet: true      # Remove .NET
+          haskell: true     # Remove Haskell
+          large-packages: false  # Não remove pacotes grandes
+          docker-images: true    # Remove imagens Docker
+          swap-storage: false    # Não modifica swap
 
+      # Step 2: Configurar variáveis de cache do GitHub Actions
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@v6
         with:
@@ -134,6 +171,8 @@ jobs:
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
+      # Step 3: Configurar URL de status baseada no tipo de build
+      # RDGen usa servidor próprio, builds normais usam API externa
       - name: Set rdgen value
         if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
         run: |
@@ -144,110 +183,130 @@ jobs:
         run: |
           echo "STATUS_URL=${{ inputs.apiServer }}/api/updategh" >> $GITHUB_ENV
 
+      # Step 4: Reportar progresso (5% completo)
+      # Atualiza status no servidor para informar progresso ao usuário
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
-        continue-on-error: true
+        continue-on-error: true  # Não falha se request falhar
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "5% complete"}'
 
+      # Step 5: Instalar dependências do sistema
+      # Ferramentas necessárias para compilar Rust e Flutter para Android
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-               clang \
-               cmake \
-               curl \
-               gcc-multilib \
-               git \
-               g++ \
-               g++-multilib \
-               imagemagick \
-               libayatana-appindicator3-dev \
-               libasound2-dev \
-               libc6-dev \
-               libclang-dev \
-               libunwind-dev \
-               libgstreamer1.0-dev \
+               clang \        # Compilador C/C++
+               cmake \        # Sistema de build
+               curl \         # Transferência de dados
+               gcc-multilib \ # Compilador C multi-arquitetura
+               git \          # Controle de versão
+               g++ \          # Compilador C++
+               g++-multilib \ # Compilador C++ multi-arquitetura
+               imagemagick \  # Processamento de imagens
+               libayatana-appindicator3-dev \ # Indicadores de sistema
+               libasound2-dev \ # Desenvolvimento ALSA (áudio)
+               libc6-dev \    # Headers da libc
+               libclang-dev \ # Headers do Clang para Rust
+               libunwind-dev \ # Biblioteca de unwinding
+               libgstreamer1.0-dev \ # GStreamer (multimídia)
                libgstreamer-plugins-base1.0-dev \
-               libgtk-3-dev \
-               libpam0g-dev \
-               libpulse-dev \
-               libva-dev \
-               libvdpau-dev \
-               libxcb-randr0-dev \
-               libxcb-shape0-dev \
-               libxcb-xfixes0-dev \
-               libxdo-dev \
-               libxfixes-dev \
-               llvm-dev \
-               nasm \
-               ninja-build \
-               openjdk-17-jdk-headless \
-               pkg-config \
-               tree \
-               wget
+               libgtk-3-dev \ # GTK3 (interface gráfica)
+               libpam0g-dev \ # PAM (autenticação)
+               libpulse-dev \ # PulseAudio
+               libva-dev \    # Video Acceleration API
+               libvdpau-dev \ # VDPAU (aceleração vídeo)
+               libxcb-randr0-dev \ # XCB RandR
+               libxcb-shape0-dev \  # XCB Shape
+               libxcb-xfixes0-dev \ # XCB XFixes
+               libxdo-dev \   # XDo (simulação de entrada X11)
+               libxfixes-dev \ # XFixes
+               llvm-dev \     # LLVM
+               nasm \         # Assembler
+               ninja-build \  # Ninja build system
+               openjdk-17-jdk-headless \ # JDK 17 sem interface gráfica
+               pkg-config \   # Gerenciador de metadados
+               tree \         # Comando tree
+               wget          # Download de arquivos
 
+      # Step 6: Checkout do código fonte do RustDesk
+      # Condicional: versão específica vs branch master
       - name: Checkout source code
         if: ${{ env.VERSION != 'master' }}
         uses: actions/checkout@v4
         with:
           repository: rustdesk/rustdesk
-          ref: refs/tags/${{ env.VERSION }}
-          submodules: recursive
-       
+          ref: refs/tags/${{ env.VERSION }}  # Tag específica
+          submodules: recursive  # Incluir submódulos Git
+
       - name: Checkout source code
         if: ${{ env.VERSION == 'master' }}
         uses: actions/checkout@v4
         with:
           repository: rustdesk/rustdesk
-          submodules: recursive
+          ref: refs/heads/master  # Branch master
+          submodules: recursive  # Incluir submódulos Git
 
+      # Step 7: Instalar Flutter
+      # Framework necessário para compilar a interface do RustDesk
       - name: Install flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: "stable"
-          flutter-version: ${{ env.ANDROID_FLUTTER_VERSION }}
+          channel: "stable"  # Canal estável
+          flutter-version: ${{ env.ANDROID_FLUTTER_VERSION }}  # Versão específica para Android
 
+      # Step 8: Aplicar patch no Flutter (se necessário)
+      # Correção específica para versão 3.24.5
       - name: Patch flutter
-        continue-on-error: true
+        continue-on-error: true  # Não falha se patch não aplicar
         run: |
-          cd $(dirname $(dirname $(which flutter)))
+          cd $(dirname $(dirname $(which flutter)))  # Ir para diretório do Flutter
+          # Aplicar patch apenas para versão específica
           [[ "3.24.5" == ${{env.ANDROID_FLUTTER_VERSION}} ]] && git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff
-  
 
+      # Step 9: Configurar Android NDK
+      # Native Development Kit necessário para compilar código nativo Android
       - uses: nttld/setup-ndk@v1
         id: setup-ndk
         with:
-          ndk-version: ${{ env.NDK_VERSION }}
-          add-to-path: true
+          ndk-version: ${{ env.NDK_VERSION }}  # Versão específica do NDK
+          add-to-path: true  # Adicionar ao PATH
 
+      # Step 10: Configurar VCPKG com cache binário
+      # VCPKG: gerenciador de pacotes C/C++ para dependências nativas
       - name: Setup vcpkg with Github Actions binary cache
         uses: lukka/run-vcpkg@v11
         with:
-          vcpkgDirectory: /opt/artifacts/vcpkg
-          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
-          doNotCache: false
+          vcpkgDirectory: /opt/artifacts/vcpkg  # Diretório do VCPKG
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}  # Commit específico
+          doNotCache: false  # Usar cache
 
+      # Step 11: Instalar dependências VCPKG
+      # Mapeia target Rust para target Android e instala dependências
       - name: Install vcpkg dependencies
         run: |
+          # Mapear target Rust para ABI Android
           case ${{ matrix.job.target }} in
             aarch64-linux-android)
-              ANDROID_TARGET=arm64-v8a
+              ANDROID_TARGET=arm64-v8a  # ARM 64-bit
             ;;
             armv7-linux-androideabi)
-              ANDROID_TARGET=armeabi-v7a
+              ANDROID_TARGET=armeabi-v7a  # ARM 32-bit
             ;;
             x86_64-linux-android)
-              ANDROID_TARGET=x86_64
+              ANDROID_TARGET=x86_64  # x86 64-bit
             ;;
             i686-linux-android)
-              ANDROID_TARGET=x86
+              ANDROID_TARGET=x86  # x86 32-bit
             ;;
           esac
+          # Executar script de build das dependências Android
           if ! ./flutter/build_android_deps.sh "${ANDROID_TARGET}"; then
+            # Em caso de erro, mostrar logs para debug
             find "${VCPKG_ROOT}/" -name "*.log" | while read -r _1; do
               echo "$_1:"
               echo "======"
@@ -277,6 +336,8 @@ jobs:
           key: ${{ matrix.job.target }}
 
       ###########################################################echo "${{ inputs.iconbase64 }}" | base64 -d > ./res/icon.png
+      # Step 12: Configurar ícones customizados (se fornecidos)
+      # Baixa ícone do servidor RDGen e gera variações para Android
       - name: icon stuff
         if: ${{ inputs.iconlink != 'false' }}
         continue-on-error: true
@@ -310,8 +371,11 @@ jobs:
         continue-on-error: true
         shell: bash
         run: |
+          # Configurar servidor de rendezvous
           sed -i -e 's|rs-ny.rustdesk.com|${{ inputs.server }}|' ./libs/hbb_common/src/config.rs
+          # Configurar chave pública
           sed -i -e 's|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ inputs.key }}|' ./libs/hbb_common/src/config.rs
+          # Configurar servidor API
           sed -i -e 's|https://admin.rustdesk.com|${{ inputs.apiServer }}|' ./src/common.rs
           # ./flutter/pubspec.yaml
           #sed -i '/intl:/a \ \ archive: ^3.6.1' ./flutter/pubspec.yaml
@@ -321,22 +385,28 @@ jobs:
         continue-on-error: true
         shell: bash
         run: |
+          # Modificar Cargo.toml principal
           sed -i -e 's|description = "RustDesk Remote Desktop"|description = "${{ inputs.appname }}"|' ./Cargo.toml
           sed -i -e 's|ProductName = "RustDesk"|ProductName = "${{ inputs.appname }}"|' ./Cargo.toml
           sed -i -e 's|FileDescription = "RustDesk Remote Desktop"|FileDescription = "${{ inputs.appname }}"|' ./Cargo.toml
           sed -i -e 's|OriginalFilename = "rustdesk.exe"|OriginalFilename = "${{ inputs.appname }}.exe"|' ./Cargo.toml
           sed -i 's|name = "RustDesk"|name = "${{ inputs.appname }}"|' ./Cargo.toml
+          # Modificar Cargo.toml da biblioteca portable
           sed -i -e 's|description = "RustDesk Remote Desktop"|description = "${{ inputs.appname }}"|' ./libs/portable/Cargo.toml
           sed -i -e 's|ProductName = "RustDesk"|ProductName = "${{ inputs.appname }}"|' ./libs/portable/Cargo.toml
           sed -i -e 's|FileDescription = "RustDesk Remote Desktop"|FileDescription = "${{ inputs.appname }}"|' ./libs/portable/Cargo.toml
           sed -i -e 's|OriginalFilename = "rustdesk.exe"|OriginalFilename = "${{ inputs.appname }}.exe"|' ./libs/portable/Cargo.toml
+          # Modificar arquivo de recursos Windows
           sed -i -e 's|"RustDesk Remote Desktop"|"${{ inputs.appname }}"|' ./flutter/windows/runner/Runner.rc
           sed -i -e 's|VALUE "InternalName", "rustdesk" "\0"|VALUE "InternalName", "${{ inputs.appname }}" "\0"|' ./flutter/windows/runner/Runner.rc
           sed -i -e 's|"Copyright © 2025 Purslane Ltd. All rights reserved."|"Copyright © 2025"|' ./flutter/windows/runner/Runner.rc
           sed -i -e 's|"rustdesk.exe"|"${{ inputs.filename }}"|' ./flutter/windows/runner/Runner.rc
           sed -i -e 's|"RustDesk"|"${{ inputs.appname }}"|' ./flutter/windows/runner/Runner.rc
+          # Modificar arquivos de linguagem
           find ./src/lang -name "*.rs" -exec sed -i -e 's|RustDesk|${{ inputs.appname }}|' {} \;
+          # Modificar strings Android
           sed -i -e 's|RustDesk|${{ inputs.appname }}|' ./flutter/android/app/src/main/res/values/strings.xml
+          # Modificar título da aplicação Flutter
           sed -i -e "s|title: 'RustDesk'|title: '${{ inputs.appname }}'|" ./flutter/lib/main.dart
           sed -i -e "s|return 'RustDesk';|return '${{ inputs.appname }}';|" ./flutter/lib/web/bridge.dart
           sed -i 's|android:label="RustDesk"|android:label="${{ inputs.appname }}"|' ./flutter/android/app/src/main/AndroidManifest.xml

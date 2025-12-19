@@ -1,48 +1,61 @@
+# Workflow: Gerador de Cliente macOS Customizado
+# Gera instaladores macOS personalizados do RustDesk com configurações específicas
+# Executado manualmente via GitHub Actions com parâmetros de personalização
+
 name: Custom macOS Client Generator
 run-name: Custom macOS Client Generator
-on: 
+on:
   workflow_dispatch:
     inputs:
+      # Servidor de rendezvous para conexão P2P
       server:
         description: 'Rendezvous Server'
         required: true
         default: ''
         type: string
+      # Chave pública para autenticação
       key:
         description: 'Public Key'
         required: true
         default: ''
         type: string
+      # Servidor API para funcionalidades avançadas
       apiServer:
         description: 'API Server'
         required: true
         default: ''
         type: string
+      # JSON personalizado com configurações adicionais
       custom:
         description: "Custom JSON"
         required: true
         default: ''
         type: string
+      # UUID único para rastreamento da solicitação
       uuid:
         description: "uuid of request"
         required: true
         default: ''
         type: string
+      # Link para ícone customizado (opcional)
       iconlink:
         description: "icon link"
         required: false
         default: 'false'
         type: string
+      # Link para logo customizado (opcional)
       logolink:
         description: "logo link"
         required: false
         default: 'false'
         type: string
+      # Nome personalizado da aplicação
       appname:
         description: "app name"
         required: true
         default: 'rustdesk'
         type: string
+      # Nome do arquivo executável
       filename:
         description: "Filename"
         required: true
@@ -54,37 +67,59 @@ on:
         default: '{}'
         type: string
 
+# Variáveis de ambiente globais para garantir reprodutibilidade do build
 env:
-  SCITER_RUST_VERSION: "1.75" # https://github.com/rustdesk/rustdesk/discussions/7503, also 1.78 has ABI change which causes our sciter version not working, https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
-  RUST_VERSION: "1.75" # sciter failed on m1 with 1.78 because of https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
-  MAC_RUST_VERSION: "1.81" 
+  # Versão do Rust compatível com Sciter (evita problemas de ABI)
+  SCITER_RUST_VERSION: "1.75"
+  # Versão principal do Rust
+  RUST_VERSION: "1.75"
+  # Versão específica do Rust para macOS
+  MAC_RUST_VERSION: "1.81"
+  # Versão do Cargo NDK para desenvolvimento Android
   CARGO_NDK_VERSION: "3.1.2"
+  # Versão do CMake para Sciter ARMv7
   SCITER_ARMV7_CMAKE_VERSION: "3.29.7"
+  # Versão do NASM para Sciter
   SCITER_NASM_DEBVERSION: "2.14-1"
+  # Versão do LLVM/Clang
   LLVM_VERSION: "15.0.6"
+  # Versão do Flutter para desenvolvimento
   FLUTTER_VERSION: "3.24.5"
-  ANDROID_FLUTTER_VERSION: "3.24.5" # >= 3.16 is very slow on my android phone, but work well on most of others. We may switch to new flutter after changing to texture rendering (I believe it can solve my problem).
-  FLUTTER_RUST_BRIDGE_VERSION: "1.80.1"  # for arm64 linux because official Dart SDK does not work
+  # Versão do Flutter específica para Android
+  ANDROID_FLUTTER_VERSION: "3.24.5"
+  # Versão do Flutter Rust Bridge
+  FLUTTER_RUST_BRIDGE_VERSION: "1.80.1"
+  # Versão do Flutter para Linux Embedded (ARM64)
   FLUTTER_ELINUX_VERSION: "3.16.9"
+  # Tag para upload de releases
   TAG_NAME: "${{ inputs.upload-tag }}"
+  # Configuração do cache binário VCPKG
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
-  # vcpkg version: 2024.07.12
+  # Commit específico do VCPKG
   VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
+  # Commit do VCPKG para ARMv7
   ARMV7_VCPKG_COMMIT_ID: "6f29f12e82a8293156836ad81cc9bf5af41fe836"
+  # Versão da aplicação
   VERSION: "${{ fromJson(inputs.extras).version }}"
+  # Versão do Android NDK
   NDK_VERSION: "r27c"
-  #signing keys env variable checks
+  # Chaves de assinatura para diferentes plataformas
   ANDROID_SIGNING_KEY: "${{ secrets.ANDROID_SIGNING_KEY }}"
   MACOS_P12_BASE64: "${{ secrets.MACOS_P12_BASE64 }}"
+  # Flag para upload de artefatos
   UPLOAD_ARTIFACT: 'true'
+  # URL base para serviço de assinatura
   SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}"
 
+# Jobs do workflow - executam em paralelo para diferentes arquiteturas macOS
 jobs:
+  # Job 1: Gerar ponte (bridge) para comunicação Flutter-Rust
   generate-bridge:
     uses: ./.github/workflows/bridge.yml
     with:
       version: ${{ fromJson(inputs.extras).version }}
 
+  # Job 2: Compilar cliente para macOS (x86_64 e ARM64)
   build-for-macos:
     name: ${{ matrix.job.target }}
     runs-on: ${{ matrix.job.os }}
@@ -93,13 +128,15 @@ jobs:
       fail-fast: false
       matrix:
         job:
+          # Target x86_64: Intel Macs
           - {
               target: x86_64-apple-darwin,
-              os: macos-13, #macos-latest or macos-14 use M1 now, https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners#:~:text=14%20GB-,macos%2Dlatest%20or%20macos%2D14,-The%20macos%2Dlatestlabel
+              os: macos-13,
               extra-build-args: "",
               arch: x86_64,
               vcpkg-triplet: x64-osx,
             }
+          # Target ARM64: Apple Silicon Macs
           - {
               target: aarch64-apple-darwin,
               os: macos-14,

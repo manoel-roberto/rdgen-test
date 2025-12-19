@@ -1,48 +1,64 @@
+# Workflow do GitHub Actions para geração de cliente RustDesk Windows
+# Este workflow é disparado via API REST e compila um cliente personalizado do RustDesk
+# para Windows com configurações específicas do usuário
+
 name: Custom Windows Client Generator
 run-name: Custom Windows Client Generator
-on: 
+
+# Gatilho: execução manual via API (workflow_dispatch)
+# Recebe parâmetros via inputs que são enviados pelo servidor RDGen
+on:
   workflow_dispatch:
     inputs:
+      # Servidor de rendezvous para conexão P2P
       server:
         description: 'Rendezvous Server'
         required: true
         default: ''
         type: string
+      # Chave pública para autenticação
       key:
         description: 'Public Key'
         required: true
         default: ''
         type: string
+      # Servidor API para funcionalidades avançadas
       apiServer:
         description: 'API Server'
         required: true
         default: ''
         type: string
+      # Configurações customizadas em JSON codificado em base64
       custom:
         description: "Custom JSON"
         required: true
         default: ''
         type: string
+      # UUID único para identificar esta execução
       uuid:
         description: "uuid of request"
         required: true
         default: ''
         type: string
+      # Link para ícone customizado (opcional)
       iconlink:
         description: "icon link"
         required: false
         default: 'false'
         type: string
+      # Link para logo customizado (opcional)
       logolink:
         description: "logo link"
         required: false
         default: 'false'
         type: string
+      # Nome da aplicação customizada
       appname:
         description: "app name"
         required: true
         default: 'rustdesk'
         type: string
+      # Nome do arquivo final
       filename:
         description: "Filename"
         required: true
@@ -54,39 +70,51 @@ on:
         default: '{}'
         type: string
 
-
+# Variáveis de ambiente globais para o workflow
+# Definem versões específicas das ferramentas para garantir reprodutibilidade
 env:
-  SCITER_RUST_VERSION: "1.75" # https://github.com/rustdesk/rustdesk/discussions/7503, also 1.78 has ABI change which causes our sciter version not working, https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
-  RUST_VERSION: "1.75" # sciter failed on m1 with 1.78 because of https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
+  # Versão do Rust para Sciter (evita problemas de ABI)
+  SCITER_RUST_VERSION: "1.75"
+  # Versão principal do Rust
+  RUST_VERSION: "1.75"
+  # Versões de ferramentas para Android NDK, CMake, NASM, LLVM, Flutter
   CARGO_NDK_VERSION: "3.1.2"
   SCITER_ARMV7_CMAKE_VERSION: "3.29.7"
   SCITER_NASM_DEBVERSION: "2.15.05-1"
   LLVM_VERSION: "15.0.6"
   FLUTTER_VERSION: "3.24.5"
-  ANDROID_FLUTTER_VERSION: "3.24.5" 
-  # for arm64 linux because official Dart SDK does not work
+  ANDROID_FLUTTER_VERSION: "3.24.5"
   FLUTTER_ELINUX_VERSION: "3.16.9"
+  # Tag para upload de artefatos
   TAG_NAME: "${{ inputs.upload-tag }}"
+  # Configurações do VCPKG (gerenciador de pacotes C++)
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
-  # vcpkg version: 2024.07.12
   VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
   ARMV7_VCPKG_COMMIT_ID: "6f29f12e82a8293156836ad81cc9bf5af41fe836"
+  # Versão extraída dos inputs
   VERSION: "${{ fromJson(inputs.extras).version }}"
+  # Versão do Android NDK
   NDK_VERSION: "r27c"
-  #signing keys env variable checks
+  # Secrets para assinatura de código (Android e macOS)
   ANDROID_SIGNING_KEY: "${{ secrets.ANDROID_SIGNING_KEY }}"
   MACOS_P12_BASE64: "${{ secrets.MACOS_P12_BASE64 }}"
+  # Flag para upload de artefatos
   UPLOAD_ARTIFACT: 'true'
+  # URL base para serviço de assinatura
   SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}"
+  # URL para atualizar status no servidor RDGen
   STATUS_URL: "${{ secrets.GENURL }}/updategh"
 
-
+# Definição dos jobs (tarefas) do workflow
 jobs:
+  # Job para gerar ponte de comunicação (provavelmente configurações de build)
   generate-bridge:
     uses: ./.github/workflows/bridge.yml
     with:
       version: ${{ fromJson(inputs.extras).version }}
 
+  # Job para construir componente RustDeskTempTopMostWindow
+  # Este é um componente de terceiros necessário para o RustDesk
   build-RustDeskTempTopMostWindow:
     uses: ./.github/workflows/third-party-RustDeskTempTopMostWindow.yml
     with:
@@ -98,24 +126,27 @@ jobs:
     strategy:
       fail-fast: false
 
+  # Job principal: construir cliente RustDesk para Windows
+  # Executa em paralelo para diferentes arquiteturas usando matrix strategy
   build-for-windows-flutter:
     name: Build Windows
+    # Dependências: espera os jobs anteriores completarem
     needs: [build-RustDeskTempTopMostWindow, generate-bridge]
     runs-on: ${{ matrix.job.os }}
     strategy:
-      fail-fast: false
+      fail-fast: false  # Continua executando outros jobs mesmo se um falhar
       matrix:
         job:
-          # - { target: i686-pc-windows-msvc        , os: windows-2022                  }
-          # - { target: x86_64-pc-windows-gnu       , os: windows-2022                  }
+          # Configurações de build para diferentes arquiteturas Windows
+          # Atualmente focado em x86_64 com MSVC
           - {
               target: x86_64-pc-windows-msvc,
               os: windows-2022,
               arch: x86_64,
               vcpkg-triplet: x64-windows-static,
             }
-          # - { target: aarch64-pc-windows-msvc, os: windows-2022, arch: aarch64 }
     steps:
+      # Primeiro step: configurar variáveis de cache do GitHub Actions
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@v6
         with:

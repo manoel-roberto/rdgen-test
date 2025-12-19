@@ -1,10 +1,10 @@
-# RDGen, a RustDesk client generator to use with your self-hosted RustDesk server
+# RDGen, um gerador de cliente RustDesk para usar com seu servidor RustDesk auto-hospedado
 
-The client generator is currently hosted [here](https://rdgen.crayoneater.org).
-If you would like to host the generator yourself, see [here](setup.md)
+O gerador de cliente está atualmente hospedado [aqui](https://rdgen.crayoneater.org).
+Se você gostaria de hospedar o gerador por conta própria, veja [aqui](setup.md)
 
-This client generator is currently integrated into my rustdesk [api
-server](https://github.com/bryangerlach/rustdesk-api-server), which is a fork
-of [rustdesk-api-server](https://github.com/kingmo888/rustdesk-api-server). If
-you are running my api server, then you will still need to fork RDGen and go
-through the setup process, but you won't need to actually run the rdgen server.
+Este gerador de cliente está atualmente integrado ao meu servidor de API rustdesk [api
+server](https://github.com/bryangerlach/rustdesk-api-server), que é um fork
+do [rustdesk-api-server](https://github.com/kingmo888/rustdesk-api-server). Se
+você estiver executando meu servidor de API, ainda precisará fazer fork do RDGen e passar
+pelo processo de configuração, mas não precisará executar o servidor rdgen.

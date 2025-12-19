@@ -1,69 +1,91 @@
+# Workflow para construção da versão web do RustDesk
+# Compila a interface web do RustDesk usando Flutter web
+
 name: Build web
+
+# Gatilho: execução manual via interface do GitHub
 on:
   workflow_dispatch:
-env:
-  FLUTTER_VERSION: "3.24.5"
-  TAG_NAME: "nightly"
-  VERSION: "1.3.9"
 
-jobs:      
+# Variáveis de ambiente globais
+env:
+  FLUTTER_VERSION: "3.24.5"  # Versão do Flutter
+  TAG_NAME: "nightly"        # Tag para nightly builds
+  VERSION: "1.3.9"          # Versão do RustDesk
+
+# Definição dos jobs
+jobs:
+  # Job principal: construir versão web do RustDesk
   build-rustdesk-web:
     name: build-rustdesk-web
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-24.04  # Ubuntu mais recente
     strategy:
-      fail-fast: false
+      fail-fast: false  # Não para outros jobs se um falhar
     env:
-      RELEASE_NAME: web-basic
+      RELEASE_NAME: web-basic  # Nome do release
     steps:
+      # Step 1: Checkout do código fonte
       - name: Checkout source code
         uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: recursive  # Incluir submódulos Git
 
+      # Step 2: Preparar ambiente
+      # Instalar ferramentas necessárias para build web
       - name: Prepare env
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y wget npm
+          sudo apt-get install -y wget npm  # wget para downloads, npm para Node.js
 
+      # Step 3: Instalar Flutter
+      # Framework necessário para compilar Flutter web
       - name: Install flutter
-        uses: subosito/flutter-action@v2.12.0 #https://github.com/subosito/flutter-action/issues/277
+        uses: subosito/flutter-action@v2.12.0
         with:
           channel: "stable"
           flutter-version: ${{ env.FLUTTER_VERSION }}
 
-      # https://rustdesk.com/docs/en/dev/build/web/
+      # Step 4: Construir versão web
+      # Processo complexo seguindo documentação oficial do RustDesk
       - name: Build web
         shell: bash
         run: |
+          # Entrar no diretório web v2
           pushd flutter/web/v2
-          npm install yarn -g
-          npm install typescript -g
-          npm install protoc -g
-          # Install protoc first, see: https://google.github.io/proto-lens/installing-protoc.html
+          # Instalar ferramentas Node.js necessárias
+          npm install yarn -g      # Gerenciador de pacotes alternativo
+          npm install typescript -g # TypeScript para JavaScript tipado
+          npm install protoc -g     # Protocol Buffers compiler
+          # Instalar ts-proto para gerar código TypeScript de protobuf
           npm install ts-proto
-          # Only works with vite <= 2.8, see: https://github.com/vitejs/vite/blob/main/docs/guide/build.md#chunking-strategy
+          # Instalar Vite (bundler) versão específica compatível
           npm install vite@2.8
+          # Instalar dependências e fazer build
           yarn install && yarn build
           popd
 
+          # Continuar no diretório web v2
           pushd flutter/web/v2
+          # Baixar dependências web pré-compiladas
           wget https://github.com/rustdesk/doc.rustdesk.com/releases/download/console/web_deps.tar.gz
-          tar xzf web_deps.tar.gz
+          tar xzf web_deps.tar.gz  # Extrair arquivo tar.gz
           popd
 
+          # Construir aplicação Flutter web em modo release
           pushd flutter
           flutter build web --release
           cd build
-          #cp ../web/README.md web
-          # TODO: Remove the following line when the web is almost complete.
-          #echo -e "\n\nThis build is for preview and not full functionality." >> web/README.md
+          # Criar pacote de release
           dir_name="rustdesk-${{ env.VERSION }}-${{ env.RELEASE_NAME }}"
           mv web "${dir_name}" && tar czf "${dir_name}".tar.gz "${dir_name}"
+          # Calcular checksum SHA256 para verificação de integridade
           sha256sum "${dir_name}".tar.gz
           popd
 
+      # Step 5: Upload do artefato gerado
+      # Disponibilizar build web para download
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-            name: web
-            path: flutter/build/rustdesk-${{ env.VERSION }}-${{ env.RELEASE_NAME }}.tar.gz
+            name: web  # Nome do artefato
+            path: flutter/build/rustdesk-${{ env.VERSION }}-${{ env.RELEASE_NAME }}.tar.gz  # Caminho do arquivo

@@ -1,60 +1,84 @@
+# Workflow para construção do componente RustDeskTempTopMostWindow
+# Este é um componente de terceiros necessário para funcionalidade de injeção de janelas no RustDesk
+
 name: build RustDeskTempTopMostWindow
 
+# Gatilho: chamado por outros workflows (workflow_call)
+# Permite reutilização deste workflow pelos generators de plataforma
 on:
   workflow_call:
     inputs:
+        # Flag para controlar upload de artefatos
         upload-artifact:
           type: boolean
           default: true
+        # Plataforma de destino para execução (ex: windows-2022)
         target:
             description: 'Target'
             required: true
             type: string
             default: 'windows-2022'
+        # Configuração de build (Release/Debug)
         configuration:
             description: 'Configuration'
             required: true
             type: string
             default: 'Release'
+        # Plataforma de arquitetura (x64/x86)
         platform:
             description: 'Platform'
             required: true
             type: string
             default: 'x64'
+        # Versão alvo do Windows
         target_version:
             description: 'TargetVersion'
             required: true
             type: string
             default: 'Windows10'
 
+# Variáveis de ambiente
 env:
-  project_path: WindowInjection/WindowInjection.vcxproj
+  project_path: WindowInjection/WindowInjection.vcxproj  # Caminho do projeto MSBuild
 
+# Definição dos jobs
 jobs:
+  # Job principal: construir componente RustDeskTempTopMostWindow
   build-RustDeskTempTopMostWindow:
-    runs-on: ${{ inputs.target }}
+    runs-on: ${{ inputs.target }}  # Plataforma definida nos inputs
     strategy:
-        fail-fast: false
+        fail-fast: false  # Não parar se um job falhar
     env:
+      # Diretório de saída do build
       build_output_dir: RustDeskTempTopMostWindow/WindowInjection/${{ inputs.platform }}/${{ inputs.configuration }}
     steps:
+      # Step 1: Adicionar MSBuild ao PATH
+      # MSBuild é necessário para compilar projetos C++
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v2
 
+      # Step 2: Baixar código fonte
+      # Clone do repositório do componente de terceiros
       - name: Download the source code
         run: |
           git clone https://github.com/rustdesk-org/RustDeskTempTopMostWindow RustDeskTempTopMostWindow
 
         # Build. commit 53b548a5398624f7149a382000397993542ad796 is tag v0.3
+      # Step 3: Construir o projeto
+      # Compilação usando MSBuild com parâmetros específicos
       - name: Build the project
         run: |
+          # Entrar no diretório e fazer checkout de commit específico (tag v0.3)
           cd RustDeskTempTopMostWindow && git checkout 53b548a5398624f7149a382000397993542ad796
+          # Executar MSBuild com configuração, plataforma e versão alvo
           msbuild ${{ env.project_path }} -p:Configuration=${{ inputs.configuration }} -p:Platform=${{ inputs.platform }} /p:TargetVersion=${{ inputs.target_version }}
 
+      # Step 4: Arquivar artefatos de build
+      # Disponibilizar DLL compilada para outros workflows
       - name: Archive build artifacts
         uses: actions/upload-artifact@master
-        if: ${{ inputs.upload-artifact }}
+        if: ${{ inputs.upload-artifact }}  # Só executa se upload-artifact for true
         with:
-            name: topmostwindow-artifacts
+            name: topmostwindow-artifacts  # Nome do artefato
             path: |
-              ./${{ env.build_output_dir }}/WindowInjection.dll
+              ./${{ env.build_output_dir }}/WindowInjection.dll  # Caminho da DLL compilada
