@@ -255,8 +255,7 @@ def generator_view(request):
                     "logolink":logolink,
                     "appname":appname,
                     "extras":extra_input,
-                    "filename":filename,
-                    "upload-tag": "Claude Haiku 4.5"  # Tag para upload, habilitando Claude Haiku 4.5
+                    "filename":filename
                 }
             } 
             # Configuração dos headers para autenticação
@@ -441,8 +440,7 @@ def startgh(request):
             "logolink":data_.get('logolink'),
             "appname":data_.get('appname'),
             "extras":data_.get('extras'),
-            "filename":data_.get('filename'),
-            "upload-tag": "Claude Haiku 4.5"  # Tag para habilitar Claude Haiku 4.5
+            "filename":data_.get('filename')
         }
     } 
     # Headers de autenticação idênticos aos da função principal
