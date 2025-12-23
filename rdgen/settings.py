@@ -20,6 +20,11 @@ https://docs.djangoproject.com/pt-br/5.0/ref/settings/
 # 'Path' - Classe para manipulação de caminhos de arquivos de forma segura e cross-platform
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Carrega variáveis de ambiente do arquivo .env
+# override=True garante que mudanças no .env sejam lidas mesmo com reloader
+load_dotenv(override=True)
 
 # Construção de caminhos dentro do projeto de forma segura
 # BASE_DIR aponta para o diretório pai do arquivo settings.py (raiz do projeto)
@@ -30,9 +35,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Configurações de desenvolvimento e produção
 # IMPORTANTE: Mantenha a SECRET_KEY em segredo em produção!
 # A SECRET_KEY é usada para criptografia de sessões, cookies e outras funcionalidades de segurança
-# Em produção, defina via variável de ambiente: export SECRET_KEY='sua-chave-secreta-aqui'
-# Para gerar uma chave segura, use: python -c "import secrets; print(secrets.token_hex(32))"
-SECRET_KEY = os.environ.get('SECRET_KEY','django-insecure-!(t-!f#6g#sr%yfded9(xha)g+=!6craeez^cp+*&bz_7vdk61')
+# Em produção, defina via variável de ambiente.
+SECRET_KEY = os.environ.get('SECRET_KEY')
+
+# Fallback apenas se for confirmado que NÃO é produção (avaliação básica)
+# No entanto, para segurança total, deve-se exigir SECRET_KEY configurada.
+if not SECRET_KEY:
+    if os.environ.get('DEBUG') == 'True':
+         SECRET_KEY = 'django-insecure-dev-key-do-not-use-in-production'
+    else:
+        raise ValueError("SECRET_KEY environment variable is missing!")
 
 # Credenciais para integração com GitHub API
 # GHUSER: Nome de usuário do GitHub (ex: 'meuusuario')
@@ -66,13 +78,14 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 # DEBUG = True: Mostra páginas de erro detalhadas e ativa ferramentas de desenvolvimento
 # DEBUG = False: Oculta informações sensíveis em produção
 # IMPORTANTE: Sempre defina DEBUG = False em produção para evitar vazamento de informações
-DEBUG = False
+# Cast string to boolean
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
 # Lista de hosts permitidos para acessar a aplicação
 # Em desenvolvimento: ['localhost', '127.0.0.1']
 # Em produção: ['meu-dominio.com', 'www.meu-dominio.com']
-# ALLOWED_HOSTS = ['*'] permite qualquer host (útil para desenvolvimento, mas inseguro para produção)
-ALLOWED_HOSTS = ['*']
+# ALLOWED_HOSTS configurado via variável de ambiente (lista separada por vírgula)
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 # Configuração opcional para CSRF (Cross-Site Request Forgery) em produção
 # Descomentado quando necessário: CSRF_TRUSTED_ORIGINS = ['https://meu-dominio.com']

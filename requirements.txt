@@ -12,3 +12,6 @@ pillow
 
 # Servidor WSGI para deploy em produção
 gunicorn
+
+# Gerenciamento de variáveis de ambiente
+python-dotenv
