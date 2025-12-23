@@ -75,19 +75,19 @@ jobs:
           sudo apt-get update -y
           # Instalar ferramentas de desenvolvimento
           sudo apt-get install -y \
-            clang \        # Compilador C/C++
-            cmake \        # Sistema de build
-            curl \         # Transferência de dados
-            gcc \          # Compilador C
-            git \          # Controle de versão
-            g++ \          # Compilador C++
-            libclang-dev \ # Headers do Clang para Rust
-            libgtk-3-dev \ # GTK para interface gráfica
-            llvm-dev \     # LLVM para compilação
-            nasm \         # Assembler
-            ninja-build \  # Sistema de build alternativo
-            pkg-config \   # Gerenciador de metadados
-            wget          # Download de arquivos
+            clang \
+            cmake \
+            curl \
+            gcc \
+            git \
+            g++ \
+            libclang-dev \
+            libgtk-3-dev \
+            llvm-dev \
+            nasm \
+            ninja-build \
+            pkg-config \
+            wget
 
       # Step 4: Instalar toolchain do Rust
       # Usa action específica para instalar Rust com versão e targets específicos
